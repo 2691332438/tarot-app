@@ -61,33 +61,45 @@ ${cards}
 
 function normalizeResponse(content: string, model: string): ReadingResponse {
   const trimmed = content.trim();
-  const jsonText =
-    trimmed.startsWith("{") && trimmed.endsWith("}")
-      ? trimmed
-      : trimmed.slice(trimmed.indexOf("{"), trimmed.lastIndexOf("}") + 1);
+  const start = trimmed.indexOf("{");
+  const end = trimmed.lastIndexOf("}");
 
-  const parsed = JSON.parse(jsonText) as Omit<ReadingResponse, "model">;
+  if (start !== -1 && end !== -1 && start < end) {
+    try {
+      const parsed = JSON.parse(
+        trimmed.slice(start, end + 1),
+      ) as Omit<ReadingResponse, "model">;
 
-  if (
-    !parsed ||
-    typeof parsed.summary !== "string" ||
-    !Array.isArray(parsed.cardReadings) ||
-    typeof parsed.advice !== "string" ||
-    typeof parsed.closing !== "string"
-  ) {
-    throw new Error("模型返回的结构不完整。");
+      if (
+        parsed &&
+        typeof parsed.summary === "string" &&
+        Array.isArray(parsed.cardReadings) &&
+        typeof parsed.advice === "string" &&
+        typeof parsed.closing === "string"
+      ) {
+        return {
+          summary: parsed.summary,
+          cardReadings: parsed.cardReadings.map((item) => ({
+            position: item.position,
+            cardName: item.cardName,
+            orientation: item.orientation === "逆位" ? "逆位" : "正位",
+            reading: item.reading,
+          })),
+          advice: parsed.advice,
+          closing: parsed.closing,
+          model,
+        };
+      }
+    } catch {
+      // Fall through to the text-based fallback below.
+    }
   }
 
   return {
-    summary: parsed.summary,
-    cardReadings: parsed.cardReadings.map((item) => ({
-      position: item.position,
-      cardName: item.cardName,
-      orientation: item.orientation === "逆位" ? "逆位" : "正位",
-      reading: item.reading,
-    })),
-    advice: parsed.advice,
-    closing: parsed.closing,
+    summary: "本次解读已成功生成，但模型返回了非标准结构，因此改用稳妥模式整理结果。",
+    cardReadings: [],
+    advice: trimmed,
+    closing: "请把最触动你的那一句，当作这次牌面的重点。",
     model,
   };
 }
