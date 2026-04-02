@@ -588,6 +588,62 @@ body {
   white-space: pre-wrap;
 }
 
+.reading-structured {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.reading-section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.reading-label {
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--gold);
+}
+
+.reading-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reading-card-item {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(201, 168, 76, 0.14);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.reading-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--gold-light);
+  font-size: 12px;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.reading-card-copy {
+  font-size: 14px;
+  line-height: 2;
+  color: var(--text);
+}
+
+.reading-closing {
+  color: var(--gold-light);
+  font-size: 16px;
+  line-height: 2;
+  text-align: center;
+  font-style: italic;
+}
+
 .loading-state {
   display: flex;
   flex-direction: column;

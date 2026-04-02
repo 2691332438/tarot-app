@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import type { ReadingResponse } from '@/lib/reading-types'
 
 const CARDS = [
   { name: '愚者', nameEn: 'The Fool', symbol: '0', keywords: '新开始 · 冒险 · 自由 · 无限可能', upright: '新的开始、冒险精神、天真无邪', reversed: '鲁莽冲动、意志薄弱、走入歧途' },
@@ -34,6 +35,8 @@ interface DrawnCard {
   position: string
 }
 
+type ReadingState = ReadingResponse | null
+
 export default function Home() {
   const [phase, setPhase] = useState<Phase>('question')
   const [question, setQuestion] = useState('')
@@ -42,8 +45,9 @@ export default function Home() {
   const [picked, setPicked] = useState<number[]>([])
   const [hoveredCard, setHoveredCard] = useState<number | null>(null)
   const [drawnCards, setDrawnCards] = useState<DrawnCard[]>([])
-  const [reading, setReading] = useState('')
+  const [reading, setReading] = useState<ReadingState>(null)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [particles, setParticles] = useState<{ x: number, y: number, size: number, dur: number, delay: number }[]>([])
 
   useEffect(() => {
@@ -84,20 +88,37 @@ export default function Home() {
   async function fetchReading(cards: DrawnCard[]) {
     setPhase('reading')
     setLoading(true)
-    setReading('')
-    const cardDesc = cards.map(c =>
-      `【${c.position}】${c.card.name}${c.reversed ? '（逆位）' : '（正位）'} - ${c.card.keywords}`
-    ).join('\n')
+    setReading(null)
+    setError('')
+
     try {
       const res = await fetch('/api/reading', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, cards: cardDesc, spread: spreadType }),
+        body: JSON.stringify({
+          question,
+          spread: spreadType === 'single' ? '单张牌 / 当下指引' : '三张牌 / 过去-现在-未来',
+          cards: cards.map(({ card, reversed, position }) => ({
+            position,
+            name: card.name,
+            reversed,
+            arcana: '大阿卡那',
+            tone: card.keywords,
+            upright: card.upright,
+            reversedMeaning: card.reversed,
+            prompt: card.keywords,
+          })),
+        }),
       })
       const data = await res.json()
-      setReading(data.reading || data.error || '解读失败，请重试')
+
+      if (!res.ok) {
+        throw new Error(data.error || '解读失败，请重试')
+      }
+
+      setReading(data as ReadingResponse)
     } catch {
-      setReading('连接失败，请检查网络后重试')
+      setError('连接失败或解读暂不可用，请稍后重试')
     }
     setLoading(false)
   }
@@ -107,7 +128,8 @@ export default function Home() {
     setQuestion('')
     setPicked([])
     setDrawnCards([])
-    setReading('')
+    setReading(null)
+    setError('')
   }
 
   return (
@@ -266,8 +288,38 @@ export default function Home() {
                   <div className="loading-orb" />
                   <p>星辰正在感应中…</p>
                 </div>
+              ) : error ? (
+                <div className="reading-structured">
+                  <p className="reading-text">{error}</p>
+                </div>
+              ) : reading ? (
+                <div className="reading-structured">
+                  <div className="reading-section-block">
+                    <div className="reading-label">整体讯息</div>
+                    <p className="reading-text">{reading.summary}</p>
+                  </div>
+
+                  <div className="reading-cards-list">
+                    {reading.cardReadings.map((item) => (
+                      <article key={`${item.position}-${item.cardName}`} className="reading-card-item">
+                        <div className="reading-card-head">
+                          <span>{item.position}</span>
+                          <span>{item.cardName} · {item.orientation}</span>
+                        </div>
+                        <p className="reading-card-copy">{item.reading}</p>
+                      </article>
+                    ))}
+                  </div>
+
+                  <div className="reading-section-block">
+                    <div className="reading-label">行动建议</div>
+                    <p className="reading-text">{reading.advice}</p>
+                  </div>
+
+                  <div className="reading-closing">{reading.closing}</div>
+                </div>
               ) : (
-                <p className="reading-text">{reading}</p>
+                <p className="reading-text">牌面已经翻开，解读即将显现。</p>
               )}
             </div>
 
